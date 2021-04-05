@@ -22,7 +22,7 @@ struct OrderRequest {
     pub order_type: OrderType,
     pub time_in_force: Option<TimeInForce>,
     pub close_position: bool,
-    pub reduce_only: bool,
+    pub reduce_only: Option<bool>,
 }
 #[allow(clippy::all)]
 pub enum TimeInForce {
@@ -161,7 +161,7 @@ impl FuturesAccount {
             order_type: OrderType::TakeProfit,
             time_in_force: None,
             close_position: false,
-            reduce_only,
+            reduce_only: Some(reduce_only),
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -186,7 +186,7 @@ impl FuturesAccount {
             order_type: OrderType::TakeProfit,
             time_in_force: None,
             close_position: false,
-            reduce_only,
+            reduce_only: Some(reduce_only),
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -211,7 +211,7 @@ impl FuturesAccount {
             order_type: OrderType::Stop,
             time_in_force: None,
             close_position: false,
-            reduce_only: false,
+            reduce_only: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -236,7 +236,7 @@ impl FuturesAccount {
             order_type: OrderType::Stop,
             time_in_force: None,
             close_position: false,
-            reduce_only: false,
+            reduce_only: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -259,7 +259,7 @@ impl FuturesAccount {
             order_type: OrderType::StopMarket,
             time_in_force: None,
             close_position: false,
-            reduce_only: false,
+            reduce_only: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -282,7 +282,7 @@ impl FuturesAccount {
             order_type: OrderType::StopMarket,
             time_in_force: None,
             close_position: false,
-            reduce_only: false,
+            reduce_only: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -305,7 +305,7 @@ impl FuturesAccount {
             order_type: OrderType::StopMarket,
             time_in_force: None,
             close_position: true,
-            reduce_only: false,
+            reduce_only: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -328,7 +328,7 @@ impl FuturesAccount {
             order_type: OrderType::StopMarket,
             time_in_force: None,
             close_position: true,
-            reduce_only: false,
+            reduce_only: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -343,7 +343,10 @@ impl FuturesAccount {
         order_parameters.insert("side".into(), order.order_side.into());
         order_parameters.insert("type".into(), order.order_type.into());
         order_parameters.insert("closePosition".into(), order.close_position.to_string());
-        order_parameters.insert("reduceOnly".into(), order.reduce_only.to_string());
+
+        if let Some(reduce_only) = order.reduce_only {
+            order_parameters.insert("reduceOnly".into(), reduce_only.to_string());
+        }
 
         if let Some(qty) = order.qty {
             order_parameters.insert("quantity".into(), qty.to_string());
