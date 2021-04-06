@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::model::string_or_float;
+use crate::model::{string_or_float, string_or_bool, string_or_integer};
 
 pub use crate::model::{
     Asks, Bids, BookTickers, Filters, KlineSummaries, KlineSummary, RateLimit, ServerTime,
@@ -172,7 +172,6 @@ pub struct OpenInterest {
     pub symbol: String,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Order {
@@ -198,7 +197,7 @@ pub struct Order {
     pub type_name: String,
     pub update_time: u64,
     pub working_type: String,
-    pub price_protect: bool
+    pub price_protect: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -225,7 +224,7 @@ pub struct PlacedOrder {
     pub type_name: String,
     pub update_time: u64,
     pub working_type: String,
-    pub price_protect: bool
+    pub price_protect: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -245,19 +244,42 @@ pub struct AccountBalance {
     pub max_withdraw_amount: f64,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Leverage {
     pub leverage: u64,
     #[serde(with = "string_or_float")]
     pub max_notional_value: f64,
-    pub symbol: String
+    pub symbol: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
     pub code: u64,
-    pub msg: String
+    pub msg: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Position {
+    #[serde(with = "string_or_float")]
+    pub entry_price: f64,
+    pub margin_type: String,
+    #[serde(with = "string_or_bool")]
+    pub is_auto_add_margin: bool,
+    #[serde(with = "string_or_integer")]
+    pub leverage: u64,
+    #[serde(with = "string_or_float")]
+    pub liquidation_price: f64,
+    #[serde(with = "string_or_float")]
+    pub mark_price: f64,
+    #[serde(with = "string_or_integer")]
+    pub max_notional_value: u64,
+    #[serde(with = "string_or_float")]
+    pub position_amt: f64,
+    pub symbol: String,
+    #[serde(with = "string_or_float")]
+    pub un_realized_profit: f64,
+    pub position_side: String,
 }

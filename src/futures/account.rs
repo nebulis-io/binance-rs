@@ -127,12 +127,27 @@ impl FuturesAccount {
     }
 
     // All current open orders
-    pub fn get_all_open_orders(&self) -> Result<Vec<Order>> {
-        let parameters: BTreeMap<String, String> = BTreeMap::new();
+    pub fn get_all_open_orders(&self, symbol: Option<String>) -> Result<Vec<Order>> {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
 
+        if let Some(symbol) = symbol {
+            parameters.insert("symbol".into(), symbol.into());
+        }
         let request = build_signed_request(parameters, self.recv_window)?;
         self.client
             .get_signed(API::Futures(Futures::OpenOrders), Some(request))
+    }
+
+    // Cancel all open orders
+    pub fn cancel_all_open_orders(&self, symbol: Option<String>) -> Result<Response> {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+
+        if let Some(symbol) = symbol {
+            parameters.insert("symbol".into(), symbol.into());
+        }
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client
+            .delete_signed(API::Futures(Futures::CancelAllOpenOrders), Some(request))
     }
 
     // Get Balance
@@ -142,6 +157,69 @@ impl FuturesAccount {
         let request = build_signed_request(parameters, self.recv_window)?;
         self.client
             .get_signed(API::Futures(Futures::Balance), Some(request))
+    }
+
+    // Get Positions
+    pub fn get_positions(&self, symbol: Option<String>) -> Result<Vec<Position>>
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+
+        if let Some(symbol) = symbol {
+            parameters.insert("symbol".into(), symbol.into());
+        }
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client
+            .get_signed(API::Futures(Futures::PositionsInformation), Some(request))
+    }
+
+    /// Place a market buy order
+    pub fn market_buy_order<S, F>(
+        &self, symbol: S, qty: F, reduce_only: bool,
+    ) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: Some(qty.into()),
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: None,
+            close_position: false,
+            reduce_only: Some(reduce_only),
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+    }
+
+    /// Place a market sell order
+    pub fn market_sell_order<S, F>(
+        &self, symbol: S, qty: F, reduce_only: bool,
+    ) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: Some(qty.into()),
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: None,
+            close_position: false,
+            reduce_only: Some(reduce_only),
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
     }
 
     /// Place a take profit buy order

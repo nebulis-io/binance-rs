@@ -779,3 +779,69 @@ pub(crate) mod string_or_float {
         }
     }
 }
+
+pub(crate) mod string_or_integer {
+    use std::fmt;
+
+    use serde::{de, Serializer, Deserialize, Deserializer};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: fmt::Display,
+        S: Serializer,
+    {
+        serializer.collect_str(value)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum StringOrInteger {
+            String(String),
+            Integer(u64),
+        }
+
+        match StringOrInteger::deserialize(deserializer)? {
+            StringOrInteger::String(s) => s.parse().map_err(de::Error::custom),
+            StringOrInteger::Integer(i) => Ok(i),
+        }
+    }
+}
+
+
+pub(crate) mod string_or_bool {
+    use std::fmt;
+
+    use serde::{de, Serializer, Deserialize, Deserializer};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: fmt::Display,
+        S: Serializer,
+    {
+        serializer.collect_str(value)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<bool, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum StringOrBool {
+            String(String),
+            Bool(bool),
+        }
+
+        match StringOrBool::deserialize(deserializer)? {
+            StringOrBool::String(s) => s.parse().map_err(de::Error::custom),
+            StringOrBool::Bool(i) => Ok(i),
+        }
+    }
+}
+
+
+

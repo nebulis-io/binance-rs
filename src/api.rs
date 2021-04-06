@@ -72,7 +72,9 @@ pub enum Futures {
     OpenOrders,
     Balance,
     Leverage,
-    MarginType
+    MarginType,
+    PositionsInformation,
+    CancelAllOpenOrders,
 }
 
 impl From<API> for String {
@@ -134,6 +136,8 @@ impl From<API> for String {
                 Futures::Balance => "/fapi/v2/balance",
                 Futures::Leverage => "/fapi/v1/leverage",
                 Futures::MarginType => "/fapi/v1/marginType",
+                Futures::PositionsInformation => "/fapi/v2/positionRisk",
+                Futures::CancelAllOpenOrders => "/fapi/v1/allOpenOrders",
             },
         })
     }
