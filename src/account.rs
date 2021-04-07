@@ -78,6 +78,7 @@ impl From<TimeInForce> for String {
     }
 }
 
+#[cfg(feature = "blocking")]
 impl Account {
     // Account Information
     pub fn get_account(&self) -> Result<AccountInformation> {
@@ -572,6 +573,542 @@ impl Account {
 
         let request = build_signed_request(parameters, self.recv_window)?;
         self.client.get_signed(API::Spot(Spot::MyTrades), Some(request))
+    }
+
+    fn build_order(&self, order: OrderRequest) -> BTreeMap<String, String> {
+        let mut order_parameters: BTreeMap<String, String> = BTreeMap::new();
+
+        order_parameters.insert("symbol".into(), order.symbol);
+        order_parameters.insert("side".into(), order.order_side.into());
+        order_parameters.insert("type".into(), order.order_type.into());
+        order_parameters.insert("quantity".into(), order.qty.to_string());
+
+        if let Some(stop_price) = order.stop_price {
+            order_parameters.insert("stopPrice".into(), stop_price.to_string());
+        }
+
+        if order.price != 0.0 {
+            order_parameters.insert("price".into(), order.price.to_string());
+            order_parameters.insert("timeInForce".into(), order.time_in_force.into());
+        }
+
+        order_parameters
+    }
+
+    fn build_quote_quantity_order(
+        &self, order: OrderQuoteQuantityRequest,
+    ) -> BTreeMap<String, String> {
+        let mut order_parameters: BTreeMap<String, String> = BTreeMap::new();
+
+        order_parameters.insert("symbol".into(), order.symbol);
+        order_parameters.insert("side".into(), order.order_side.into());
+        order_parameters.insert("type".into(), order.order_type.into());
+        order_parameters.insert("quoteOrderQty".into(), order.quote_order_qty.to_string());
+
+        if order.price != 0.0 {
+            order_parameters.insert("price".into(), order.price.to_string());
+            order_parameters.insert("timeInForce".into(), order.time_in_force.into());
+        }
+
+        order_parameters
+    }
+}
+
+#[cfg(not(feature = "blocking"))]
+impl Account {
+    // Account Information
+    pub async fn get_account(&self) -> Result<AccountInformation> {
+        let request = build_signed_request(BTreeMap::new(), self.recv_window)?;
+        self.client.get_signed(API::Spot(Spot::Account), Some(request)).await
+    }
+
+    // Balance for ONE Asset
+    pub async fn get_balance<S>(&self, asset: S) -> Result<Balance>
+    where
+        S: Into<String>,
+    {
+        match self.get_account().await {
+            Ok(account) => {
+                let cmp_asset = asset.into();
+                for balance in account.balances {
+                    if balance.asset == cmp_asset {
+                        return Ok(balance);
+                    }
+                }
+                bail!("Asset not found");
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    // Current open orders for ONE symbol
+    pub async fn get_open_orders<S>(&self, symbol: S) -> Result<Vec<Order>>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.get_signed(API::Spot(Spot::OpenOrders), Some(request)).await
+    }
+
+    // All current open orders
+    pub async fn get_all_open_orders(&self) -> Result<Vec<Order>> {
+        let parameters: BTreeMap<String, String> = BTreeMap::new();
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.get_signed(API::Spot(Spot::OpenOrders), Some(request)).await
+    }
+
+    // Cancel all open orders for ONE symbol
+    pub async fn cancel_all_open_orders<S>(&self, symbol: S) -> Result<Vec<OrderCanceled>>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.delete_signed(API::Spot(Spot::OpenOrders), Some(request)).await
+    }
+
+    // Check an order's status
+    pub async fn order_status<S>(&self, symbol: S, order_id: u64) -> Result<Order>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+        parameters.insert("orderId".into(), order_id.to_string());
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.get_signed(API::Spot(Spot::Order), Some(request)).await
+    }
+
+    /// Place a test status order
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_order_status<S>(&self, symbol: S, order_id: u64) -> Result<()>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+        parameters.insert("orderId".into(), order_id.to_string());
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.get_signed::<()>(API::Spot(Spot::OrderTest), Some(request)).await
+    }
+
+    // Place a LIMIT order - BUY
+    pub async fn limit_buy<S, F>(&self, symbol: S, qty: F, price: f64) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let buy: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Limit,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(buy);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test limit order - BUY
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_limit_buy<S, F>(&self, symbol: S, qty: F, price: f64) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let buy: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Limit,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(buy);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    // Place a LIMIT order - SELL
+    pub async fn limit_sell<S, F>(&self, symbol: S, qty: F, price: f64) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Limit,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test LIMIT order - SELL
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_limit_sell<S, F>(&self, symbol: S, qty: F, price: f64) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Limit,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    // Place a MARKET order - BUY
+    pub async fn market_buy<S, F>(&self, symbol: S, qty: F) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let buy: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price: 0.0,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(buy);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test MARKET order - BUY
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_market_buy<S, F>(&self, symbol: S, qty: F) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let buy: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price: 0.0,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(buy);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    // Place a MARKET order with quote quantity - BUY
+    pub async fn market_buy_using_quote_quantity<S, F>(
+        &self, symbol: S, quote_order_qty: F,
+    ) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let buy: OrderQuoteQuantityRequest = OrderQuoteQuantityRequest {
+            symbol: symbol.into(),
+            quote_order_qty: quote_order_qty.into(),
+            price: 0.0,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_quote_quantity_order(buy);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test MARKET order with quote quantity - BUY
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_market_buy_using_quote_quantity<S, F>(
+        &self, symbol: S, quote_order_qty: F,
+    ) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let buy: OrderQuoteQuantityRequest = OrderQuoteQuantityRequest {
+            symbol: symbol.into(),
+            quote_order_qty: quote_order_qty.into(),
+            price: 0.0,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_quote_quantity_order(buy);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    // Place a MARKET order - SELL
+    pub async fn market_sell<S, F>(&self, symbol: S, qty: F) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price: 0.0,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test MARKET order - SELL
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_market_sell<S, F>(&self, symbol: S, qty: F) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price: 0.0,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    // Place a MARKET order with quote quantity - SELL
+    pub async fn market_sell_using_quote_quantity<S, F>(
+        &self, symbol: S, quote_order_qty: F,
+    ) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderQuoteQuantityRequest = OrderQuoteQuantityRequest {
+            symbol: symbol.into(),
+            quote_order_qty: quote_order_qty.into(),
+            price: 0.0,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_quote_quantity_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test MARKET order with quote quantity - SELL
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_market_sell_using_quote_quantity<S, F>(
+        &self, symbol: S, quote_order_qty: F,
+    ) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderQuoteQuantityRequest = OrderQuoteQuantityRequest {
+            symbol: symbol.into(),
+            quote_order_qty: quote_order_qty.into(),
+            price: 0.0,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+        };
+        let order = self.build_quote_quantity_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    /// Place a stop limit buy order
+    pub async fn stop_limit_buy_order<S, F>(
+        &self,
+        symbol: S,
+        qty: F,
+        price: f64,
+        stop_price: f64,
+        time_in_force: TimeInForce,
+    ) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: Some(stop_price),
+            order_side: OrderSide::Buy,
+            order_type: OrderType::StopLossLimit,
+            time_in_force,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test stop limit buy order
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_stop_limit_buy_order<S, F>(
+        &self,
+        symbol: S,
+        qty: F,
+        price: f64,
+        stop_price: f64,
+        time_in_force: TimeInForce,
+    ) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: Some(stop_price),
+            order_side: OrderSide::Buy,
+            order_type: OrderType::StopLossLimit,
+            time_in_force,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+    
+    /// Place a custom order
+    #[allow(clippy::too_many_arguments)] 
+    pub async fn custom_order<S, F>(
+        &self,
+        symbol: S,
+        qty: F,
+        price: f64,
+        stop_price: Option<f64>,
+        order_side: OrderSide,
+        order_type: OrderType,
+        time_in_force: TimeInForce,
+    ) -> Result<Transaction>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price,
+            order_side,
+            order_type,
+            time_in_force,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed(API::Spot(Spot::Order), request).await
+    }
+
+    /// Place a test custom order
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_custom_order<S, F>(
+        &self,
+        symbol: S,
+        qty: F,
+        price: f64,
+        order_side: OrderSide,
+        order_type: OrderType,
+        time_in_force: TimeInForce,
+    ) -> Result<()>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: qty.into(),
+            price,
+            stop_price: None,
+            order_side,
+            order_type,
+            time_in_force,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client.post_signed::<()>(API::Spot(Spot::OrderTest), request).await
+    }
+
+    // Check an order's status
+    pub async fn cancel_order<S>(&self, symbol: S, order_id: u64) -> Result<OrderCanceled>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+        parameters.insert("orderId".into(), order_id.to_string());
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.delete_signed(API::Spot(Spot::Order), Some(request)).await
+    }
+
+    /// Place a test cancel order
+    ///
+    /// This order is sandboxed: it is validated, but not sent to the matching engine.
+    pub async fn test_cancel_order<S>(&self, symbol: S, order_id: u64) -> Result<()>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+        parameters.insert("orderId".into(), order_id.to_string());
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.delete_signed::<()>(API::Spot(Spot::OrderTest), Some(request)).await
+    }
+
+    // Trade history
+    pub async fn trade_history<S>(&self, symbol: S) -> Result<Vec<TradeHistory>>
+    where
+        S: Into<String>,
+    {
+        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+        parameters.insert("symbol".into(), symbol.into());
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client.get_signed(API::Spot(Spot::MyTrades), Some(request)).await
     }
 
     fn build_order(&self, order: OrderRequest) -> BTreeMap<String, String> {
