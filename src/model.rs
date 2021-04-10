@@ -780,6 +780,43 @@ pub(crate) mod string_or_float {
     }
 }
 
+pub(crate) mod optional_string_or_float {
+    use std::fmt;
+
+    use serde::{de, Serializer, Deserialize, Deserializer};
+
+    pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: fmt::Display,
+        S: Serializer,
+    {
+        match value {
+            Some(value) => serializer.collect_str(value),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum StringOrFloat {
+            String(String),
+            Float(f64),
+        }
+
+        match Option::<StringOrFloat>::deserialize(deserializer)? {
+            None => Ok(None),
+            Some(v) => Ok(Some(match v {
+                StringOrFloat::String(s) => s.parse().map_err(de::Error::custom),
+                StringOrFloat::Float(i) => Ok(i),
+            }?)),
+        }
+    }
+}
+
 pub(crate) mod string_or_integer {
     use std::fmt;
 
@@ -811,7 +848,6 @@ pub(crate) mod string_or_integer {
     }
 }
 
-
 pub(crate) mod string_or_bool {
     use std::fmt;
 
@@ -842,6 +878,3 @@ pub(crate) mod string_or_bool {
         }
     }
 }
-
-
-

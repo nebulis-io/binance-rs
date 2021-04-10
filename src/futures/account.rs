@@ -789,6 +789,38 @@ impl FuturesAccount {
             .await
     }
 
+    /// Cancel an order
+    pub async fn cancel_order<S>(&self, symbol: S, order_id: u64) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let mut parameters = BTreeMap::new();
+
+        parameters.insert("symbol".into(), symbol.into());
+        parameters.insert("orderId".into(), order_id.to_string());
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client
+            .delete_signed(API::Futures(Futures::Order), Some(request))
+            .await
+    }
+
+    /// Cancel multiples order
+    pub async fn cancel_orders<S>(&self, symbol: S, order_ids: &[u64]) -> Result<Vec<PlacedOrder>>
+    where
+        S: Into<String>,
+    {
+        let mut parameters = BTreeMap::new();
+
+        parameters.insert("symbol".into(), symbol.into());
+        parameters.insert("orderIdList".into(), format!("{:?}", order_ids));
+
+        let request = build_signed_request(parameters, self.recv_window)?;
+        self.client
+            .delete_signed(API::Futures(Futures::Order), Some(request))
+            .await
+    }
+
     fn build_order(&self, order: OrderRequest) -> BTreeMap<String, String> {
         let mut order_parameters: BTreeMap<String, String> = BTreeMap::new();
 

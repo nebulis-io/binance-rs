@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::model::{string_or_float, string_or_bool, string_or_integer};
+use crate::model::{string_or_float, string_or_bool, string_or_integer, optional_string_or_float};
 
 pub use crate::model::{
     Asks, Bids, BookTickers, Filters, KlineSummaries, KlineSummary, RateLimit, ServerTime,
@@ -282,4 +282,164 @@ pub struct Position {
     #[serde(with = "string_or_float")]
     pub un_realized_profit: f64,
     pub position_side: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderTradeUpdateEvent {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "T")]
+    pub transaction_time: u64,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "o")]
+    pub event: OrderTradeUpdate,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderTradeUpdate {
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "c")]
+    pub client_order_id: String,
+    #[serde(rename = "S")]
+    pub side: String,
+    #[serde(rename = "o")]
+    pub order_type: String,
+    #[serde(rename = "f")]
+    pub time_in_force: String,
+    #[serde(rename = "q", with = "string_or_float")]
+    pub original_quantity: f64,
+    #[serde(rename = "p", with = "string_or_float")]
+    pub original_price: f64,
+    #[serde(rename = "ap", with = "string_or_float")]
+    pub average_price: f64,
+    #[serde(rename = "sp", with = "string_or_float")]
+    pub stop_price: f64,
+    #[serde(rename = "x")]
+    pub execution_type: String,
+    #[serde(rename = "X")]
+    pub order_status: String,
+    #[serde(rename = "i")]
+    pub order_id: u64,
+    #[serde(rename = "l", with = "string_or_float")]
+    pub last_filled_quantity: f64,
+    #[serde(rename = "z", with = "string_or_float")]
+    pub filled_accumulated_quantity: f64,
+    #[serde(rename = "L", with = "string_or_float")]
+    pub last_filled_price: f64,
+    #[serde(rename = "N")]
+    pub commission_asset: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "n", with = "optional_string_or_float")]
+    pub commission: Option<f64>,
+    #[serde(rename = "T")]
+    pub trade_time: u64,
+    #[serde(rename = "t")]
+    pub trade_id: u64,
+    #[serde(rename = "b", with = "string_or_float")]
+    pub bids_notional: f64,
+    #[serde(rename = "a", with = "string_or_float")]
+    pub ask_notional: f64,
+    #[serde(rename = "m")]
+    pub maker_side: bool,
+    #[serde(rename = "R")]
+    pub reduce_only: bool,
+    #[serde(rename = "wt")]
+    pub stop_price_working_type: String,
+    #[serde(rename = "ot")]
+    pub original_order_type: String,
+    #[serde(rename = "ps")]
+    pub position_side: String,
+    #[serde(rename = "cp")]
+    pub cp: Option<bool>,
+    #[serde(default)]
+    #[serde(rename = "AP", with = "optional_string_or_float")]
+    pub activation_price: Option<f64>,
+    #[serde(default)]
+    #[serde(rename = "cr", with = "optional_string_or_float")]
+    pub callback_rate: Option<f64>,
+    #[serde(rename = "rp", with = "string_or_float")]
+    pub realized_profit: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountUpdateEvent {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "T")]
+    pub transaction_time: u64,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "a")]
+    pub event: AccountUpdate,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountUpdate {
+    #[serde(rename = "m")]
+    pub reason_type: String,
+    #[serde(rename = "B")]
+    pub balances: Vec<Balance>,
+    #[serde(rename = "P")]
+    pub positions: Vec<WSPosition>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Balance {
+    #[serde(rename = "a")]
+    pub asset: String,
+    #[serde(rename = "wb", with = "string_or_float")]
+    pub wallet_balance: f64,
+    #[serde(rename = "cw", with = "string_or_float")]
+    pub cross_wallet_balance: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WSPosition {
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "pa", with = "string_or_float")]
+    pub position_amount: f64,
+    #[serde(rename = "ep", with = "string_or_float")]
+    pub entry_price: f64,
+    #[serde(rename = "cr", with = "string_or_float")]
+    pub accumulated_realized: f64,
+    #[serde(rename = "up", with = "string_or_float")]
+    pub unrealized_pnl: f64,
+    #[serde(rename = "mt")]
+    pub margin_tyoe: String,
+    #[serde(rename = "iw", with = "string_or_float")]
+    pub isolated_wallet: f64,
+    #[serde(rename = "ps")]
+    pub position_side: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LeverageUpdateEvent {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "T")]
+    pub transaction_time: u64,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "ac")]
+    pub event: LeverageUpdate,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LeverageUpdate {
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "l", with = "string_or_integer")]
+    pub position_amount: u64
 }
