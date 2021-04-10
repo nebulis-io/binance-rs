@@ -150,8 +150,14 @@ where
                 }?;
                 match message {
                     Message::Text(msg) => {
-                        if let Err(e) = self.handle_msg(&msg).await {
-                            bail!(format!("Error on handling stream message: {}", e));
+                        match self.handle_msg(&msg).await {
+                            Ok(_) => {},
+                            Err(Error(ErrorKind::ListenKeyExpired, _)) => {
+                                bail!(ErrorKind::ListenKeyExpired);
+                            }
+                            Err(e) => {
+                                bail!(format!("Error on handling stream message: {}", e));
+                            }
                         }
                     }
                     Message::Ping(_) | Message::Pong(_) | Message::Binary(_) => (),
