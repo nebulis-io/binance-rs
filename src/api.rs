@@ -76,6 +76,7 @@ pub enum Futures {
     PositionsInformation,
     CancelAllOpenOrders,
     UserDataStream,
+    BatchOrders
 }
 
 impl From<API> for String {
@@ -140,6 +141,7 @@ impl From<API> for String {
                 Futures::PositionsInformation => "/fapi/v2/positionRisk",
                 Futures::CancelAllOpenOrders => "/fapi/v1/allOpenOrders",
                 Futures::UserDataStream => "/fapi/v1/listenKey",
+                Futures::BatchOrders => "/fapi/v1/batchOrders",
             },
         })
     }

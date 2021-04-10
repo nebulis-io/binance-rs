@@ -813,11 +813,14 @@ impl FuturesAccount {
         let mut parameters = BTreeMap::new();
 
         parameters.insert("symbol".into(), symbol.into());
-        parameters.insert("orderIdList".into(), format!("{:?}", order_ids));
+        parameters.insert(
+            "orderIdList".into(),
+            format!("{:?}", order_ids).replace(" ", ""),
+        );
 
         let request = build_signed_request(parameters, self.recv_window)?;
         self.client
-            .delete_signed(API::Futures(Futures::Order), Some(request))
+            .delete_signed(API::Futures(Futures::BatchOrders), Some(request))
             .await
     }
 

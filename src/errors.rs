@@ -14,6 +14,7 @@ pub struct BinanceContentError {
 error_chain! {
     errors {
         BinanceError(response: BinanceContentError)
+        ListenKeyExpired
      }
 
     foreign_links {

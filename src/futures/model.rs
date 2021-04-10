@@ -443,3 +443,13 @@ pub struct LeverageUpdate {
     #[serde(rename = "l", with = "string_or_integer")]
     pub position_amount: u64
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListenKeyExpiredEvent {
+    #[serde(rename = "e")]
+    pub event_type: String,
+    #[serde(rename = "E")]
+    pub event_time: u64,
+}
+

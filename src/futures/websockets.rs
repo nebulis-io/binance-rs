@@ -21,13 +21,15 @@ static WEBSOCKET_URL: &str = "wss://fstream.binance.com/ws/";
 static ORDER_TRADE_UPDATE: &str = "ORDER_TRADE_UPDATE";
 static ACCOUNT_UPDATE: &str = "ACCOUNT_UPDATE";
 static ACCOUNT_CONFIG_UPDATE: &str = "ACCOUNT_CONFIG_UPDATE";
+static LISTEN_KEY_EXPIRED: &str = "listenKeyExpired";
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum FuturesWebsocketEvent {
     OrderTrade(OrderTradeUpdateEvent),
     AccountUpdate(AccountUpdateEvent),
-    LeverageUpdate(LeverageUpdateEvent)
+    LeverageUpdate(LeverageUpdateEvent),
+    ListenKeyExpired(ListenKeyExpiredEvent)
 }
 
 // Account
@@ -129,6 +131,9 @@ where
         } else if msg.find(ACCOUNT_CONFIG_UPDATE) != None {
             let leverage_update: LeverageUpdateEvent = from_str(msg)?;
             (self.handler)(FuturesWebsocketEvent::LeverageUpdate(leverage_update), self.state.clone()).await?;
+        }else if msg.find(LISTEN_KEY_EXPIRED) != None {
+            let listen_key_expired: ListenKeyExpiredEvent = from_str(msg)?;
+            (self.handler)(FuturesWebsocketEvent::ListenKeyExpired(listen_key_expired), self.state.clone()).await?;
         }else {
             bail!(format!("Can't decode: {:?}", msg));
         }
