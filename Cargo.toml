@@ -46,3 +46,29 @@ env_logger = "0.8.3"
 default-features = false
 features = ["async-await", "sink", "std"]
 version = "0.3"
+
+
+[[example]]
+name = "binance_endpoints"
+required-features = ["blocking"]
+
+
+[[example]]
+name = "binance_futures_endpoints"
+required-features = ["blocking"]
+
+[[example]]
+name = "binance_save_all_trades"
+required-features = ["blocking"]
+
+[[example]]
+name = "binance_websockets"
+required-features = ["blocking"]
+
+[[test]]
+name = "account_tests"
+required-features = ["blocking"]
+
+[[test]]
+name = "general_tests"
+required-features = ["blocking"]
