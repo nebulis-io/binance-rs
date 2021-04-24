@@ -414,6 +414,72 @@ impl FuturesAccount {
             .post_signed(API::Futures(Futures::Order), request)
     }
 
+
+    /// Close a long position
+    fn close_position_sell<S>(&self, symbol: S) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: None,
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: None,
+            close_position: true,
+            reduce_only: None,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+    }
+
+    /// Close a short position
+    fn close_position_buy<S>(&self, symbol: S) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: None,
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: None,
+            close_position: true,
+            reduce_only: None,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+    }
+
+    /// Close position
+    pub fn close_position<S>(&self, symbol: S) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let symbol: String = symbol.into().clone();
+        let positions = self.get_positions(None)?;
+        let position = positions.iter().find(|p| p.symbol == symbol);
+
+        if let Some(position) = position {
+            if position.position_amt > 0.0 {
+                self.close_position_sell(symbol)
+            } else {
+                self.close_position_buy(symbol)
+            }
+        } else {
+            bail!("No positions found for {}", symbol);
+        }
+    }
+
+
     fn build_order(&self, order: OrderRequest) -> BTreeMap<String, String> {
         let mut order_parameters: BTreeMap<String, String> = BTreeMap::new();
 
@@ -822,6 +888,72 @@ impl FuturesAccount {
         self.client
             .delete_signed(API::Futures(Futures::BatchOrders), Some(request))
             .await
+    }
+
+    /// Close a long position
+    async fn close_position_sell<S>(&self, symbol: S) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: None,
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::Market,
+            time_in_force: None,
+            close_position: true,
+            reduce_only: None,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+            .await
+    }
+
+    /// Close a short position
+    async fn close_position_buy<S>(&self, symbol: S) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            symbol: symbol.into(),
+            qty: None,
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::Market,
+            time_in_force: None,
+            close_position: true,
+            reduce_only: None,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+            .await
+    }
+
+    /// Close position
+    pub async fn close_position<S>(&self, symbol: S) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+    {
+        let symbol: String = symbol.into().clone();
+        let positions = self.get_positions(None).await?;
+        let position = positions.iter().find(|p| p.symbol == symbol);
+
+        if let Some(position) = position {
+            if position.position_amt > 0.0 {
+                self.close_position_sell(symbol).await
+            } else {
+                self.close_position_buy(symbol).await
+            }
+        } else {
+            bail!("No positions found for {}", symbol);
+        }
     }
 
     fn build_order(&self, order: OrderRequest) -> BTreeMap<String, String> {
