@@ -274,8 +274,8 @@ pub struct Position {
     pub liquidation_price: f64,
     #[serde(with = "string_or_float")]
     pub mark_price: f64,
-    #[serde(with = "string_or_integer")]
-    pub max_notional_value: u64,
+    #[serde(with = "string_or_float")]
+    pub max_notional_value: f64,
     #[serde(with = "string_or_float")]
     pub position_amt: f64,
     pub symbol: String,
