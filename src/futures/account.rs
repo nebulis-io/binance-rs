@@ -823,7 +823,7 @@ impl FuturesAccount {
             price: None,
             stop_price: None,
             order_side: OrderSide::Sell,
-            order_type: OrderType::StopMarket,
+            order_type: OrderType::TrailingStopMarket,
             time_in_force: None,
             close_position: false,
             reduce_only: Some(reduce_only),
