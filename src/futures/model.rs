@@ -175,7 +175,7 @@ pub struct OpenInterest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Order {
-    pub avg_price: String,
+    pub avg_price: Option<String>,
     pub client_order_id: String,
     pub cum_quote: String,
     pub executed_qty: String,
@@ -203,7 +203,7 @@ pub struct Order {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlacedOrder {
-    pub avg_price: String,
+    pub avg_price: Option<String>,
     pub client_order_id: String,
     pub cum_quote: String,
     pub executed_qty: String,
