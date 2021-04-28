@@ -779,15 +779,16 @@ impl FuturesAccount {
 
     /// Place a trailing stop market buy order
     pub async fn trailing_stop_market_buy_order<S, F>(
-        &self, symbol: S, qty: F, price: f64, callback_rate: f64, reduce_only: bool,
+        &self, symbol: S, qty: F, activation_price: Option<f64>, callback_rate: f64,
+        reduce_only: bool,
     ) -> Result<PlacedOrder>
     where
         S: Into<String>,
         F: Into<f64>,
     {
         let sell: OrderRequest = OrderRequest {
+            activation_price,
             callback_rate: Some(callback_rate),
-            activation_price: Some(price),
             symbol: symbol.into(),
             qty: Some(qty.into()),
             price: None,
@@ -807,15 +808,16 @@ impl FuturesAccount {
 
     /// Place a trailing stop market self order
     pub async fn trailing_stop_market_sell_order<S, F>(
-        &self, symbol: S, qty: F, price: f64, callback_rate: f64, reduce_only: bool,
+        &self, symbol: S, qty: F, activation_price: Option<f64>, callback_rate: f64,
+        reduce_only: bool,
     ) -> Result<PlacedOrder>
     where
         S: Into<String>,
         F: Into<f64>,
     {
         let sell: OrderRequest = OrderRequest {
+            activation_price,
             callback_rate: Some(callback_rate),
-            activation_price: Some(price),
             symbol: symbol.into(),
             qty: Some(qty.into()),
             price: None,
