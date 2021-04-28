@@ -14,6 +14,8 @@ pub struct FuturesAccount {
 }
 
 struct OrderRequest {
+    pub activation_price: Option<f64>,
+    pub callback_rate: Option<f64>,
     pub symbol: String,
     pub qty: Option<f64>,
     pub price: Option<f64>,
@@ -64,6 +66,7 @@ pub enum OrderType {
     TakeProfit,
     StopMarket,
     TakeProfitMarket,
+    TrailingStopMarket,
 }
 
 impl From<OrderType> for String {
@@ -76,6 +79,7 @@ impl From<OrderType> for String {
             OrderType::TakeProfit => String::from("TAKE_PROFIT"),
             OrderType::StopMarket => String::from("STOP_MARKET"),
             OrderType::TakeProfitMarket => String::from("TAKE_PROFIT_MARKET"),
+            OrderType::TrailingStopMarket => String::from("TRAILING_STOP_MARKET"),
         }
     }
 }
@@ -567,6 +571,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: Some(reduce_only),
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -593,6 +599,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: Some(reduce_only),
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -619,6 +627,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: Some(reduce_only),
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -645,6 +655,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: Some(reduce_only),
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -671,6 +683,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: None,
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -697,6 +711,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: None,
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -723,6 +739,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: None,
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -749,6 +767,64 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: false,
             reduce_only: None,
+            activation_price: None,
+            callback_rate: None,
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+            .await
+    }
+
+    /// Place a trailing stop market buy order
+    pub async fn trailing_stop_market_buy_order<S, F>(
+        &self, symbol: S, qty: F, price: f64, callback_rate: f64, reduce_only: bool,
+    ) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            callback_rate: Some(callback_rate),
+            activation_price: Some(price),
+            symbol: symbol.into(),
+            qty: Some(qty.into()),
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Buy,
+            order_type: OrderType::TrailingStopMarket,
+            time_in_force: None,
+            close_position: false,
+            reduce_only: Some(reduce_only),
+        };
+        let order = self.build_order(sell);
+        let request = build_signed_request(order, self.recv_window)?;
+        self.client
+            .post_signed(API::Futures(Futures::Order), request)
+            .await
+    }
+
+    /// Place a trailing stop market self order
+    pub async fn trailing_stop_market_sell_order<S, F>(
+        &self, symbol: S, qty: F, price: f64, callback_rate: f64, reduce_only: bool,
+    ) -> Result<PlacedOrder>
+    where
+        S: Into<String>,
+        F: Into<f64>,
+    {
+        let sell: OrderRequest = OrderRequest {
+            callback_rate: Some(callback_rate),
+            activation_price: Some(price),
+            symbol: symbol.into(),
+            qty: Some(qty.into()),
+            price: None,
+            stop_price: None,
+            order_side: OrderSide::Sell,
+            order_type: OrderType::StopMarket,
+            time_in_force: None,
+            close_position: false,
+            reduce_only: Some(reduce_only),
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -775,6 +851,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: true,
             reduce_only: None,
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -801,6 +879,8 @@ impl FuturesAccount {
             time_in_force: None,
             close_position: true,
             reduce_only: None,
+            activation_price: None,
+            callback_rate: None,
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
@@ -891,6 +971,14 @@ impl FuturesAccount {
         }
         if let Some(time_in_force) = order.time_in_force {
             order_parameters.insert("timeInForce".into(), time_in_force.into());
+        }
+
+        if let Some(activation_price) = order.activation_price {
+            order_parameters.insert("activationPrice".into(), activation_price.to_string());
+        }
+
+        if let Some(callback_rate) = order.callback_rate {
+            order_parameters.insert("callbackRate".into(), callback_rate.to_string());
         }
 
         order_parameters
