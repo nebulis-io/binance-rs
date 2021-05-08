@@ -54,18 +54,22 @@ impl Client {
         let response = client
             .get(url.as_str())
             .headers(self.build_headers(true)?)
-            .send().await?;
+            .send()
+            .await?;
 
         self.handler(response).await
     }
 
-    pub async fn post_signed<T: DeserializeOwned>(&self, endpoint: API, request: String) -> Result<T> {
+    pub async fn post_signed<T: DeserializeOwned>(
+        &self, endpoint: API, request: String,
+    ) -> Result<T> {
         let url = self.sign_request(endpoint, Some(request));
         let client = &self.inner_client;
         let response = client
             .post(url.as_str())
             .headers(self.build_headers(true)?)
-            .send().await?;
+            .send()
+            .await?;
 
         self.handler(response).await
     }
@@ -78,12 +82,15 @@ impl Client {
         let response = client
             .delete(url.as_str())
             .headers(self.build_headers(true)?)
-            .send().await?;
+            .send()
+            .await?;
 
         self.handler(response).await
     }
 
-    pub async fn get<T: DeserializeOwned>(&self, endpoint: API, request: Option<String>) -> Result<T> {
+    pub async fn get<T: DeserializeOwned>(
+        &self, endpoint: API, request: Option<String>,
+    ) -> Result<T> {
         let mut url: String = format!("{}{}", self.host, String::from(endpoint));
         if let Some(request) = request {
             if !request.is_empty() {
@@ -104,7 +111,8 @@ impl Client {
         let response = client
             .post(url.as_str())
             .headers(self.build_headers(false)?)
-            .send().await?;
+            .send()
+            .await?;
 
         self.handler(response).await
     }
@@ -118,7 +126,8 @@ impl Client {
             .put(url.as_str())
             .headers(self.build_headers(false)?)
             .body(data)
-            .send().await?;
+            .send()
+            .await?;
 
         self.handler(response).await
     }
@@ -132,7 +141,8 @@ impl Client {
             .delete(url.as_str())
             .headers(self.build_headers(false)?)
             .body(data)
-            .send().await?;
+            .send()
+            .await?;
 
         self.handler(response).await
     }

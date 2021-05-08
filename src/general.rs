@@ -48,7 +48,6 @@ impl General {
     }
 }
 
-
 #[cfg(not(feature = "blocking"))]
 impl General {
     // Test connectivity

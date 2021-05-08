@@ -434,14 +434,13 @@ pub struct LeverageUpdateEvent {
     pub event: LeverageUpdate,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LeverageUpdate {
     #[serde(rename = "s")]
     pub symbol: String,
     #[serde(rename = "l", with = "string_or_integer")]
-    pub position_amount: u64
+    pub position_amount: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -452,4 +451,3 @@ pub struct ListenKeyExpiredEvent {
     #[serde(rename = "E")]
     pub event_time: u64,
 }
-

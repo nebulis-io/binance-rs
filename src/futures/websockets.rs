@@ -29,7 +29,7 @@ pub enum FuturesWebsocketEvent {
     OrderTrade(OrderTradeUpdateEvent),
     AccountUpdate(AccountUpdateEvent),
     LeverageUpdate(LeverageUpdateEvent),
-    ListenKeyExpired(ListenKeyExpiredEvent)
+    ListenKeyExpired(ListenKeyExpiredEvent),
 }
 
 // Account
@@ -37,20 +37,19 @@ pub enum FuturesWebsocketEvent {
 pub struct FuturesWebSockets<'a, Fut, S>
 where
     Fut: Future<Output = Result<()>>,
-    S: Send + Sync + Clone
+    S: Send + Sync + Clone,
 {
     pub socket: Option<(WebSocketStream<MaybeTlsStream<TcpStream>>, Response)>,
     handler: Box<dyn Fn(FuturesWebsocketEvent, S) -> Fut + 'static + Send + Sync>,
     subscription: &'a str,
-    state: S
+    state: S,
 }
 
 impl<'a, F, S> FuturesWebSockets<'a, F, S>
 where
     F: Future<Output = Result<()>>,
-    S: Send + Sync + Clone
+    S: Send + Sync + Clone,
 {
-
     pub fn new<Callback>(handler: Callback, state: S) -> FuturesWebSockets<'a, F, S>
     where
         Callback: Fn(FuturesWebsocketEvent, S) -> F + 'static + Send + Sync,
@@ -59,7 +58,7 @@ where
             socket: None,
             handler: Box::new(handler),
             subscription: "",
-            state
+            state,
         }
     }
 
@@ -124,17 +123,33 @@ where
         let _value: serde_json::Value = serde_json::from_str(msg)?;
         if msg.find(ORDER_TRADE_UPDATE) != None {
             let order_trade: OrderTradeUpdateEvent = from_str(msg)?;
-            (self.handler)(FuturesWebsocketEvent::OrderTrade(order_trade), self.state.clone()).await?;
+            (self.handler)(
+                FuturesWebsocketEvent::OrderTrade(order_trade),
+                self.state.clone(),
+            )
+            .await?;
         } else if msg.find(ACCOUNT_UPDATE) != None {
             let account_update: AccountUpdateEvent = from_str(msg)?;
-            (self.handler)(FuturesWebsocketEvent::AccountUpdate(account_update), self.state.clone()).await?;
+            (self.handler)(
+                FuturesWebsocketEvent::AccountUpdate(account_update),
+                self.state.clone(),
+            )
+            .await?;
         } else if msg.find(ACCOUNT_CONFIG_UPDATE) != None {
             let leverage_update: LeverageUpdateEvent = from_str(msg)?;
-            (self.handler)(FuturesWebsocketEvent::LeverageUpdate(leverage_update), self.state.clone()).await?;
-        }else if msg.find(LISTEN_KEY_EXPIRED) != None {
+            (self.handler)(
+                FuturesWebsocketEvent::LeverageUpdate(leverage_update),
+                self.state.clone(),
+            )
+            .await?;
+        } else if msg.find(LISTEN_KEY_EXPIRED) != None {
             let listen_key_expired: ListenKeyExpiredEvent = from_str(msg)?;
-            (self.handler)(FuturesWebsocketEvent::ListenKeyExpired(listen_key_expired), self.state.clone()).await?;
-        }else {
+            (self.handler)(
+                FuturesWebsocketEvent::ListenKeyExpired(listen_key_expired),
+                self.state.clone(),
+            )
+            .await?;
+        } else {
             bail!(format!("Can't decode: {:?}", msg));
         }
         Ok(())
@@ -149,17 +164,15 @@ where
                     continue;
                 }?;
                 match message {
-                    Message::Text(msg) => {
-                        match self.handle_msg(&msg).await {
-                            Ok(_) => {},
-                            Err(Error(ErrorKind::ListenKeyExpired, _)) => {
-                                bail!(ErrorKind::ListenKeyExpired);
-                            }
-                            Err(e) => {
-                                bail!(format!("Error on handling stream message: {}", e));
-                            }
+                    Message::Text(msg) => match self.handle_msg(&msg).await {
+                        Ok(_) => {}
+                        Err(Error(ErrorKind::ListenKeyExpired, _)) => {
+                            bail!(ErrorKind::ListenKeyExpired);
                         }
-                    }
+                        Err(e) => {
+                            bail!(format!("Error on handling stream message: {}", e));
+                        }
+                    },
                     Message::Ping(_) | Message::Pong(_) | Message::Binary(_) => (),
                     Message::Close(e) => {
                         bail!(format!("Disconnected {:?}", e));

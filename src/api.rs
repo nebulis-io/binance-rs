@@ -1,4 +1,7 @@
-use crate::{account::*, futures::{account::FuturesAccount, userstream::FuturesUserStream}};
+use crate::{
+    account::*,
+    futures::{account::FuturesAccount, userstream::FuturesUserStream},
+};
 use crate::config::*;
 use crate::market::*;
 use crate::general::*;
@@ -76,7 +79,7 @@ pub enum Futures {
     PositionsInformation,
     CancelAllOpenOrders,
     UserDataStream,
-    BatchOrders
+    BatchOrders,
 }
 
 impl From<API> for String {
@@ -273,7 +276,6 @@ impl Binance for FuturesAccount {
     }
 }
 
-
 impl Binance for FuturesUserStream {
     fn new(api_key: Option<String>, secret_key: Option<String>) -> FuturesUserStream {
         Self::new_with_config(api_key, secret_key, &Config::default())
@@ -292,4 +294,3 @@ impl Binance for FuturesUserStream {
         }
     }
 }
-
