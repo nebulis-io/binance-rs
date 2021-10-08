@@ -124,7 +124,7 @@ where
 
     async fn handle_msg(&mut self, msg: &str) -> Result<()> {
         let value: serde_json::Value = serde_json::from_str(msg)?;
-        let msg if msg.find(STREAM) != None {
+        let msg = if msg.find(STREAM) != None {
             if value["data"] != serde_json::Value::Null {
                 format!("{}", value["data"])
             } else {
