@@ -124,9 +124,10 @@ where
 
     async fn handle_msg(&mut self, msg: &str) -> Result<()> {
         if msg.find(STREAM) != None {
+            let value: serde_json::Value = serde_json::from_str(msg)?;
             if value["data"] != serde_json::Value::Null {
                 let data = format!("{}", value["data"]);
-                self.handle_msg(&data)?;
+                self.handle_msg(&data).await?;
             }
         } else if msg.find(ORDER_TRADE_UPDATE) != None {
             let order_trade: OrderTradeUpdateEvent = from_str(msg)?;
