@@ -451,3 +451,26 @@ pub struct ListenKeyExpiredEvent {
     #[serde(rename = "E")]
     pub event_time: u64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamAggTrade {
+    #[serde(rename = "E")]
+    pub event_time: u64,
+    #[serde(rename = "s")]
+    pub symbol: String,
+    #[serde(rename = "T")]
+    pub time: u64,
+    #[serde(rename = "a")]
+    pub agg_id: u64,
+    #[serde(rename = "f")]
+    pub first_id: u64,
+    #[serde(rename = "l")]
+    pub last_id: u64,
+    #[serde(rename = "m")]
+    pub maker: bool,
+    #[serde(rename = "p", with = "string_or_float")]
+    pub price: f64,
+    #[serde(rename = "q", with = "string_or_float")]
+    pub qty: f64,
+}

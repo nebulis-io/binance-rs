@@ -22,6 +22,8 @@ static ORDER_TRADE_UPDATE: &str = "ORDER_TRADE_UPDATE";
 static ACCOUNT_UPDATE: &str = "ACCOUNT_UPDATE";
 static ACCOUNT_CONFIG_UPDATE: &str = "ACCOUNT_CONFIG_UPDATE";
 static LISTEN_KEY_EXPIRED: &str = "listenKeyExpired";
+static AGGREGATED_TRADE: &str = "aggTrade";
+static STREAM: &str = "stream";
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -30,6 +32,7 @@ pub enum FuturesWebsocketEvent {
     AccountUpdate(AccountUpdateEvent),
     LeverageUpdate(LeverageUpdateEvent),
     ListenKeyExpired(ListenKeyExpiredEvent),
+    AggTrade(StreamAggTrade)
 }
 
 // Account
@@ -111,21 +114,6 @@ where
         }
     }
 
-    // pub fn connect_multiple_streams(&mut self, endpoints: &[String]) -> Result<()> {
-    //     let wss: String = format!("{}{}", WEBSOCKET_MULTI_STREAM, endpoints.join("/"));
-    //     let url = Url::parse(&wss)?;
-
-    //     match connect(url) {
-    //         Ok(answer) => {
-    //             self.socket = Some(answer);
-    //             Ok(())
-    //         }
-    //         Err(e) => {
-    //             bail!(format!("Error during handshake {}", e));
-    //         }
-    //     }
-    // }
-
     pub async fn disconnect(&mut self) -> Result<()> {
         if let Some(ref mut socket) = self.socket {
             Ok(socket.0.close(None).await?)
@@ -135,8 +123,12 @@ where
     }
 
     async fn handle_msg(&mut self, msg: &str) -> Result<()> {
-        let _value: serde_json::Value = serde_json::from_str(msg)?;
-        if msg.find(ORDER_TRADE_UPDATE) != None {
+        if msg.find(STREAM) != None {
+            if value["data"] != serde_json::Value::Null {
+                let data = format!("{}", value["data"]);
+                self.handle_msg(&data)?;
+            }
+        } else if msg.find(ORDER_TRADE_UPDATE) != None {
             let order_trade: OrderTradeUpdateEvent = from_str(msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::OrderTrade(order_trade),
@@ -161,6 +153,13 @@ where
             let listen_key_expired: ListenKeyExpiredEvent = from_str(msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::ListenKeyExpired(listen_key_expired),
+                self.state.clone(),
+            )
+            .await?;
+        } else if msg.find(AGGREGATED_TRADE) != None {
+            let stream_agg_trade: StreamAggTrade = from_str(msg)?;
+            (self.handler)(
+                FuturesWebsocketEvent::AggTrade(stream_agg_trade),
                 self.state.clone(),
             )
             .await?;
