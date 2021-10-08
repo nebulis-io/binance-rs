@@ -123,49 +123,54 @@ where
     }
 
     async fn handle_msg(&mut self, msg: &str) -> Result<()> {
-        if msg.find(STREAM) != None {
-            let value: serde_json::Value = serde_json::from_str(msg)?;
+        let value: serde_json::Value = serde_json::from_str(msg)?;
+        let msg if msg.find(STREAM) != None {
             if value["data"] != serde_json::Value::Null {
-                let data = format!("{}", value["data"]);
-                self.handle_msg(&data).await?;
+                format!("{}", value["data"])
+            } else {
+                msg.to_owned()
             }
-        } else if msg.find(ORDER_TRADE_UPDATE) != None {
-            let order_trade: OrderTradeUpdateEvent = from_str(msg)?;
+        } else {
+            msg.to_owned()
+        };
+        
+        if msg.find(ORDER_TRADE_UPDATE) != None {
+            let order_trade: OrderTradeUpdateEvent = from_str(&msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::OrderTrade(order_trade),
                 self.state.clone(),
             )
             .await?;
         } else if msg.find(ACCOUNT_UPDATE) != None {
-            let account_update: AccountUpdateEvent = from_str(msg)?;
+            let account_update: AccountUpdateEvent = from_str(&msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::AccountUpdate(account_update),
                 self.state.clone(),
             )
             .await?;
         } else if msg.find(ACCOUNT_CONFIG_UPDATE) != None {
-            let leverage_update: LeverageUpdateEvent = from_str(msg)?;
+            let leverage_update: LeverageUpdateEvent = from_str(&msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::LeverageUpdate(leverage_update),
                 self.state.clone(),
             )
             .await?;
         } else if msg.find(LISTEN_KEY_EXPIRED) != None {
-            let listen_key_expired: ListenKeyExpiredEvent = from_str(msg)?;
+            let listen_key_expired: ListenKeyExpiredEvent = from_str(&msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::ListenKeyExpired(listen_key_expired),
                 self.state.clone(),
             )
             .await?;
         } else if msg.find(AGGREGATED_TRADE) != None {
-            let stream_agg_trade: StreamAggTrade = from_str(msg)?;
+            let stream_agg_trade: StreamAggTrade = from_str(&msg)?;
             (self.handler)(
                 FuturesWebsocketEvent::AggTrade(stream_agg_trade),
                 self.state.clone(),
             )
             .await?;
         } else {
-            bail!(format!("Can't decode: {:?}", msg));
+            bail!(format!("Can't decode: {:?}", &msg));
         }
         Ok(())
     }
