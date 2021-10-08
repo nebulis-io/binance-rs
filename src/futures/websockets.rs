@@ -79,8 +79,8 @@ where
     }
 
     pub async fn connect_multiple_streams<Str: AsRef<str>>(&mut self, streams: &[Str]) -> Result<()> {
-        self.subscription = streams.join("/");
-        let wss: String = format!("{}{}", WEBSOCKET_MULTI_STREAM, subscription);
+        self.subscription = streams.iter().map(|s| s.as_ref()).collect::<Vec<_>>().join("/");
+        let wss: String = format!("{}{}", WEBSOCKET_MULTI_STREAM,self. subscription);
         let url = Url::parse(&wss)?;
 
         match connect_async(url).await {
