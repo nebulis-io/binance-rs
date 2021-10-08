@@ -16,7 +16,7 @@ use tungstenite::handshake::client::Response;
 use tokio::net::TcpStream;
 
 static WEBSOCKET_URL: &str = "wss://fstream.binance.com/ws/";
-// static WEBSOCKET_MULTI_STREAM: &str = "wss://fstream.binance.com/stream?streams="; // <streamName1>/<streamName2>/<streamName3>
+static WEBSOCKET_MULTI_STREAM: &str = "wss://fstream.binance.com/stream?streams="; // <streamName1>/<streamName2>/<streamName3>
 
 static ORDER_TRADE_UPDATE: &str = "ORDER_TRADE_UPDATE";
 static ACCOUNT_UPDATE: &str = "ACCOUNT_UPDATE";
@@ -65,6 +65,22 @@ where
     pub async fn connect(&mut self, subscription: &'a str) -> Result<()> {
         self.subscription = subscription;
         let wss: String = format!("{}{}", WEBSOCKET_URL, subscription);
+        let url = Url::parse(&wss)?;
+
+        match connect_async(url).await {
+            Ok(answer) => {
+                self.socket = Some(answer);
+                Ok(())
+            }
+            Err(e) => {
+                bail!(format!("Error during handshake {}", e));
+            }
+        }
+    }
+
+    pub async fn connect_multiple_streams<S: AsRef<str>>(&mut self, streams: &[S]) -> Result<()> {
+        self.subscription = subscription;
+        let wss: String = format!("{}{}", WEBSOCKET_MULTI_STREAM, streams.join("/"));
         let url = Url::parse(&wss)?;
 
         match connect_async(url).await {
